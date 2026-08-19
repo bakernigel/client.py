@@ -1,4 +1,22 @@
 #!/bin/bash
+
+# Home Assistant DEEBOT X2 OMNI patch installer
+#
+# Temporary workaround for applying X2 OMNI station support to the
+# deebot-client package installed inside Home Assistant.
+#
+# Patch source:
+#   bakernigel/client.py - x2-omni-station-support
+#
+# Run from the Home Assistant OS host:
+#
+#   sudo docker exec -it homeassistant \
+#     /config/deebot_patch/apply_patch.sh
+#
+# Then restart Home Assistant Core:
+#
+#   sudo docker restart homeassistant
+
 set -euo pipefail
 
 REPO="bakernigel/client.py"
