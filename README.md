@@ -1,3 +1,93 @@
+## Home Assistant — DEEBOT X2 OMNI temporary patch
+
+This fork contains additional support for the ECOVACS DEEBOT X2 OMNI
+(`lf3bn4`), developed on the `x2-omni-station-support` branch.
+
+The changes add support for:
+
+- Auto-empty frequency
+- Empty dustbin
+- Dry mop
+- Clean base
+- Station state
+- Washing mop station state handling
+
+The changes have been tested with a physical DEEBOT X2 OMNI using
+Home Assistant and `deebot-client` 18.5.1.
+
+### Why the patch is needed
+
+Home Assistant installs its own released version of `deebot-client`.
+Until the X2 OMNI changes are merged upstream and included in a released
+version of `deebot-client`, a Home Assistant Core update may replace the
+patched files with the standard versions.
+
+The script:
+
+    scripts/apply_x2_omni_patch.sh
+
+downloads the patched files from the `x2-omni-station-support` branch and
+installs them into the `deebot-client` package currently used by Home
+Assistant.
+
+The script dynamically determines the installed Python/site-packages
+location, so it is not tied to a specific Python version.
+
+### After a Home Assistant Core update
+
+From the Home Assistant OS host, run:
+
+    sudo docker exec -it homeassistant /config/deebot_patch/apply_x2_omni_patch.sh
+
+If /config/deebot_patch/apply_x2_omni_patch.sh is missing download it from this repository dev branch
+  scripts/apply_x2_omni_patch.sh
+
+The script will display the status of:
+
+    e6ofmn.py
+    lf3bn4.py
+    clean.py
+    station_state.py
+
+If all files are already patched, it exits without making changes.
+
+If the Home Assistant update has replaced them, the script:
+
+1. Downloads the current patch files from GitHub.
+2. Backs up the installed `deebot-client` files.
+3. Applies the X2 OMNI patch.
+4. Removes the Python bytecode cache.
+5. Verifies the installed files and expected patch markers.
+
+After a successful patch, restart Home Assistant Core:
+
+    sudo docker restart homeassistant
+
+### Patch files
+
+The patch modifies the installed copies of:
+
+    deebot_client/hardware/e6ofmn.py
+    deebot_client/hardware/lf3bn4.py
+    deebot_client/commands/json/clean.py
+    deebot_client/messages/json/station_state.py
+
+`lf3bn4` uses the `e6ofmn` hardware definition, so the patched
+`e6ofmn.py` is installed for both hardware identifiers.
+
+Backups are stored under:
+
+    /config/deebot_patch/backups/
+
+### Removing the workaround
+
+This workaround should no longer be necessary once the X2 OMNI changes
+have been merged into `DeebotUniverse/client.py` and the corresponding
+`deebot-client` release is included in Home Assistant.
+
+At that point, stop running the patch script and verify that the released
+integration provides the required X2 OMNI station capabilities before
+removing `/config/deebot_patch`.
 # Client Library for Deebot devices (Vacuums)
 
 [![PyPI - Downloads](https://img.shields.io/pypi/dw/deebot-client?style=for-the-badge)](https://pypi.org/project/deebot-client)
