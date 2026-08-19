@@ -13,6 +13,10 @@
 #   sudo docker exec -it homeassistant \
 #     /config/deebot_patch/apply_patch.sh
 #
+# If it fails try:
+#    sed -i 's/\r$//' /config/deebot_patch/apply_patch.sh
+#    chmod +x /config/deebot_patch/apply_patch.sh
+#
 # Then restart Home Assistant Core:
 #
 #   sudo docker restart homeassistant
