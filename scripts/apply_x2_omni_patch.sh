@@ -2,7 +2,7 @@
 
 # Home Assistant DEEBOT X2 OMNI patch installer
 #
-# Temporary workaround for applying X2 OMNI station support to the
+# Temporary workaround for applying X2 OMNI support to the
 # deebot-client package installed inside Home Assistant.
 #
 # Patch source:
@@ -11,11 +11,11 @@
 # Run from the Home Assistant OS host:
 #
 #   sudo docker exec -it homeassistant \
-#     /config/deebot_patch/apply_patch.sh
+#     /config/deebot_patch/apply_x2_omni_patch.sh
 #
 # If it fails try:
-#    sed -i 's/\r$//' /config/deebot_patch/apply_patch.sh
-#    chmod +x /config/deebot_patch/apply_patch.sh
+#    sed -i 's/\r$//' /config/deebot_patch/apply_x2_omni_patch.sh
+#    chmod +x /config/deebot_patch/apply_x2_omni_patch.sh
 #
 # Then restart Home Assistant Core:
 #
@@ -53,6 +53,14 @@ curl -fsSL \
   "$BASE_URL/deebot_client/messages/json/station_state.py" \
   -o "$DOWNLOAD_DIR/station_state.py"
 
+curl -fsSL \
+  "$BASE_URL/deebot_client/messages/json/stats.py" \
+  -o "$DOWNLOAD_DIR/stats.py"
+
+curl -fsSL \
+  "$BASE_URL/deebot_client/messages/json/__init__.py" \
+  -o "$DOWNLOAD_DIR/json_init.py"
+
 echo "Patch files downloaded successfully."
 echo
 
@@ -85,12 +93,16 @@ DEST_E6="$SITE_DIR/hardware/e6ofmn.py"
 DEST_LF="$SITE_DIR/hardware/lf3bn4.py"
 DEST_CLEAN="$SITE_DIR/commands/json/clean.py"
 DEST_STATION="$SITE_DIR/messages/json/station_state.py"
+DEST_STATS="$SITE_DIR/messages/json/stats.py"
+DEST_JSON_INIT="$SITE_DIR/messages/json/__init__.py"
 
 DEST_FILES=(
   "$DEST_E6"
   "$DEST_LF"
   "$DEST_CLEAN"
   "$DEST_STATION"
+  "$DEST_STATS"
+  "$DEST_JSON_INIT"
 )
 
 for file in "${DEST_FILES[@]}"; do
@@ -110,30 +122,44 @@ echo
 PATCH_NEEDED=0
 
 if cmp -s "$DOWNLOAD_DIR/e6ofmn.py" "$DEST_E6"; then
-  echo "  e6ofmn.py        PATCHED"
+  echo "  e6ofmn.py         PATCHED"
 else
-  echo "  e6ofmn.py        NOT PATCHED"
+  echo "  e6ofmn.py         NOT PATCHED"
   PATCH_NEEDED=1
 fi
 
 if cmp -s "$DOWNLOAD_DIR/e6ofmn.py" "$DEST_LF"; then
-  echo "  lf3bn4.py        PATCHED"
+  echo "  lf3bn4.py         PATCHED"
 else
-  echo "  lf3bn4.py        NOT PATCHED"
+  echo "  lf3bn4.py         NOT PATCHED"
   PATCH_NEEDED=1
 fi
 
 if cmp -s "$DOWNLOAD_DIR/clean.py" "$DEST_CLEAN"; then
-  echo "  clean.py         PATCHED"
+  echo "  clean.py          PATCHED"
 else
-  echo "  clean.py         NOT PATCHED"
+  echo "  clean.py          NOT PATCHED"
   PATCH_NEEDED=1
 fi
 
 if cmp -s "$DOWNLOAD_DIR/station_state.py" "$DEST_STATION"; then
-  echo "  station_state.py PATCHED"
+  echo "  station_state.py  PATCHED"
 else
-  echo "  station_state.py NOT PATCHED"
+  echo "  station_state.py  NOT PATCHED"
+  PATCH_NEEDED=1
+fi
+
+if cmp -s "$DOWNLOAD_DIR/stats.py" "$DEST_STATS"; then
+  echo "  stats.py          PATCHED"
+else
+  echo "  stats.py          NOT PATCHED"
+  PATCH_NEEDED=1
+fi
+
+if cmp -s "$DOWNLOAD_DIR/json_init.py" "$DEST_JSON_INIT"; then
+  echo "  json/__init__.py  PATCHED"
+else
+  echo "  json/__init__.py  NOT PATCHED"
   PATCH_NEEDED=1
 fi
 
@@ -164,6 +190,12 @@ cp "$DEST_CLEAN" \
 cp "$DEST_STATION" \
    "$BACKUP_DIR/station_state.py"
 
+cp "$DEST_STATS" \
+   "$BACKUP_DIR/stats.py"
+
+cp "$DEST_JSON_INIT" \
+   "$BACKUP_DIR/json_init.py"
+
 echo "Applying patch..."
 
 cp "$DOWNLOAD_DIR/e6ofmn.py" \
@@ -177,6 +209,12 @@ cp "$DOWNLOAD_DIR/clean.py" \
 
 cp "$DOWNLOAD_DIR/station_state.py" \
    "$DEST_STATION"
+
+cp "$DOWNLOAD_DIR/stats.py" \
+   "$DEST_STATS"
+
+cp "$DOWNLOAD_DIR/json_init.py" \
+   "$DEST_JSON_INIT"
 
 echo "Removing Python bytecode caches..."
 
@@ -211,6 +249,16 @@ if ! cmp -s "$DOWNLOAD_DIR/station_state.py" "$DEST_STATION"; then
   VERIFY_FAILED=1
 fi
 
+if ! cmp -s "$DOWNLOAD_DIR/stats.py" "$DEST_STATS"; then
+  echo "ERROR: stats.py verification failed"
+  VERIFY_FAILED=1
+fi
+
+if ! cmp -s "$DOWNLOAD_DIR/json_init.py" "$DEST_JSON_INIT"; then
+  echo "ERROR: json/__init__.py verification failed"
+  VERIFY_FAILED=1
+fi
+
 if [ "$VERIFY_FAILED" -ne 0 ]; then
   echo
   echo "Patch verification FAILED."
@@ -239,6 +287,26 @@ grep -q "WASHING_MOP" "$DEST_STATION" || {
   exit 1
 }
 
+grep -q "OnCleanDataUpdateV2" "$DEST_STATS" || {
+  echo "ERROR: OnCleanDataUpdateV2 marker not found in stats.py"
+  exit 1
+}
+
+grep -q "OnLastTimeStats" "$DEST_STATS" || {
+  echo "ERROR: OnLastTimeStats marker not found in stats.py"
+  exit 1
+}
+
+grep -q "OnCleanDataUpdateV2" "$DEST_JSON_INIT" || {
+  echo "ERROR: OnCleanDataUpdateV2 marker not found in json/__init__.py"
+  exit 1
+}
+
+grep -q "OnLastTimeStats" "$DEST_JSON_INIT" || {
+  echo "ERROR: OnLastTimeStats marker not found in json/__init__.py"
+  exit 1
+}
+
 echo
 echo "Patch verification successful."
 echo
@@ -247,6 +315,8 @@ echo "  hardware/e6ofmn.py"
 echo "  hardware/lf3bn4.py"
 echo "  commands/json/clean.py"
 echo "  messages/json/station_state.py"
+echo "  messages/json/stats.py"
+echo "  messages/json/__init__.py"
 echo
 echo "Restart Home Assistant Core to load the new code."
 echo "========================================"
