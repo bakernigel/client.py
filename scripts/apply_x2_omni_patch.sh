@@ -5,16 +5,17 @@
 # Temporary workaround for applying X2 OMNI support to:
 #
 #   1. deebot-client installed inside Home Assistant
-#   2. Home Assistant's built-in Ecovacs event integration
+#   2. Home Assistant's built-in Ecovacs event and vacuum integration
 #
 # Sources:
 #
 #   deebot-client patches:
-#     bakernigel/client.py - x2-omni-station-support
+#     bakernigel/client.py - dev
 #
-#   Home Assistant Ecovacs event patch:
+#   Home Assistant Ecovacs patches:
 #     bakernigel/client.py - dev
 #     patches/homeassistant/ecovacs/event.py
+#     patches/homeassistant/ecovacs/vacuum.py
 #
 # Run from the Home Assistant OS host:
 #
@@ -39,7 +40,7 @@ set -euo pipefail
 
 REPO="bakernigel/client.py"
 
-CLIENT_BRANCH="x2-omni-station-support"
+CLIENT_BRANCH="dev"
 PATCH_BRANCH="dev"
 
 CLIENT_BASE_URL="https://raw.githubusercontent.com/$REPO/$CLIENT_BRANCH"
@@ -90,8 +91,20 @@ curl -fsSL \
   -o "$DOWNLOAD_DIR/json_init.py"
 
 curl -fsSL \
+  "$CLIENT_BASE_URL/deebot_client/capabilities.py" \
+  -o "$DOWNLOAD_DIR/capabilities.py"
+
+curl -fsSL \
+  "$CLIENT_BASE_URL/deebot_client/events/__init__.py" \
+  -o "$DOWNLOAD_DIR/events_init.py"
+
+curl -fsSL \
   "$PATCH_BASE_URL/patches/homeassistant/ecovacs/event.py" \
   -o "$DOWNLOAD_DIR/ha_ecovacs_event.py"
+
+curl -fsSL \
+  "$PATCH_BASE_URL/patches/homeassistant/ecovacs/vacuum.py" \
+  -o "$DOWNLOAD_DIR/ha_ecovacs_vacuum.py"
 
 echo "Patch files downloaded successfully."
 echo
@@ -137,9 +150,12 @@ DEST_CLEAN="$SITE_DIR/commands/json/clean.py"
 DEST_STATION="$SITE_DIR/messages/json/station_state.py"
 DEST_STATS="$SITE_DIR/messages/json/stats.py"
 DEST_JSON_INIT="$SITE_DIR/messages/json/__init__.py"
+DEST_CAPABILITIES="$SITE_DIR/capabilities.py"
+DEST_EVENTS_INIT="$SITE_DIR/events/__init__.py"
 
 HA_ECOVACS_DIR="/usr/src/homeassistant/homeassistant/components/ecovacs"
 DEST_HA_EVENT="$HA_ECOVACS_DIR/event.py"
+DEST_HA_VACUUM="$HA_ECOVACS_DIR/vacuum.py"
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +169,10 @@ DEST_FILES=(
   "$DEST_STATION"
   "$DEST_STATS"
   "$DEST_JSON_INIT"
+  "$DEST_CAPABILITIES"
+  "$DEST_EVENTS_INIT"
   "$DEST_HA_EVENT"
+  "$DEST_HA_VACUUM"
 )
 
 for file in "${DEST_FILES[@]}"; do
@@ -221,13 +240,34 @@ else
   PATCH_NEEDED=1
 fi
 
+if cmp -s "$DOWNLOAD_DIR/capabilities.py" "$DEST_CAPABILITIES"; then
+  echo "  capabilities.py   PATCHED"
+else
+  echo "  capabilities.py   NOT PATCHED"
+  PATCH_NEEDED=1
+fi
+
+if cmp -s "$DOWNLOAD_DIR/events_init.py" "$DEST_EVENTS_INIT"; then
+  echo "  events/__init__.py PATCHED"
+else
+  echo "  events/__init__.py NOT PATCHED"
+  PATCH_NEEDED=1
+fi
+
 echo
 echo "Home Assistant:"
 
 if cmp -s "$DOWNLOAD_DIR/ha_ecovacs_event.py" "$DEST_HA_EVENT"; then
-  echo "  ecovacs/event.py  PATCHED"
+  echo "  ecovacs/event.py   PATCHED"
 else
-  echo "  ecovacs/event.py  NOT PATCHED"
+  echo "  ecovacs/event.py   NOT PATCHED"
+  PATCH_NEEDED=1
+fi
+
+if cmp -s "$DOWNLOAD_DIR/ha_ecovacs_vacuum.py" "$DEST_HA_VACUUM"; then
+  echo "  ecovacs/vacuum.py  PATCHED"
+else
+  echo "  ecovacs/vacuum.py  NOT PATCHED"
   PATCH_NEEDED=1
 fi
 
@@ -274,8 +314,17 @@ cp "$DEST_STATS" \
 cp "$DEST_JSON_INIT" \
    "$BACKUP_DIR/json_init.py"
 
+cp "$DEST_CAPABILITIES" \
+   "$BACKUP_DIR/capabilities.py"
+
+cp "$DEST_EVENTS_INIT" \
+   "$BACKUP_DIR/events_init.py"
+
 cp "$DEST_HA_EVENT" \
    "$BACKUP_DIR/ha_ecovacs_event.py"
+
+cp "$DEST_HA_VACUUM" \
+   "$BACKUP_DIR/ha_ecovacs_vacuum.py"
 
 
 # ---------------------------------------------------------------------------
@@ -303,8 +352,17 @@ cp "$DOWNLOAD_DIR/stats.py" \
 cp "$DOWNLOAD_DIR/json_init.py" \
    "$DEST_JSON_INIT"
 
+cp "$DOWNLOAD_DIR/capabilities.py" \
+   "$DEST_CAPABILITIES"
+
+cp "$DOWNLOAD_DIR/events_init.py" \
+   "$DEST_EVENTS_INIT"
+
 cp "$DOWNLOAD_DIR/ha_ecovacs_event.py" \
    "$DEST_HA_EVENT"
+
+cp "$DOWNLOAD_DIR/ha_ecovacs_vacuum.py" \
+   "$DEST_HA_VACUUM"
 
 
 # ---------------------------------------------------------------------------
@@ -365,8 +423,23 @@ if ! cmp -s "$DOWNLOAD_DIR/json_init.py" "$DEST_JSON_INIT"; then
   VERIFY_FAILED=1
 fi
 
+if ! cmp -s "$DOWNLOAD_DIR/capabilities.py" "$DEST_CAPABILITIES"; then
+  echo "ERROR: capabilities.py verification failed"
+  VERIFY_FAILED=1
+fi
+
+if ! cmp -s "$DOWNLOAD_DIR/events_init.py" "$DEST_EVENTS_INIT"; then
+  echo "ERROR: events/__init__.py verification failed"
+  VERIFY_FAILED=1
+fi
+
 if ! cmp -s "$DOWNLOAD_DIR/ha_ecovacs_event.py" "$DEST_HA_EVENT"; then
   echo "ERROR: Home Assistant ecovacs/event.py verification failed"
+  VERIFY_FAILED=1
+fi
+
+if ! cmp -s "$DOWNLOAD_DIR/ha_ecovacs_vacuum.py" "$DEST_HA_VACUUM"; then
+  echo "ERROR: Home Assistant ecovacs/vacuum.py verification failed"
   VERIFY_FAILED=1
 fi
 
@@ -428,6 +501,36 @@ grep -q "OnLastTimeStats" "$DEST_JSON_INIT" || {
   exit 1
 }
 
+grep -q "selected_rooms" "$DEST_CAPABILITIES" || {
+  echo "ERROR: selected_rooms capability marker not found in capabilities.py"
+  exit 1
+}
+
+grep -q "CleaningProgressEvent" "$DEST_CAPABILITIES" || {
+  echo "ERROR: CleaningProgressEvent marker not found in capabilities.py"
+  exit 1
+}
+
+grep -q "SelectedRoomsEvent" "$DEST_EVENTS_INIT" || {
+  echo "ERROR: SelectedRoomsEvent marker not found in events/__init__.py"
+  exit 1
+}
+
+grep -q "CleaningProgressEvent" "$DEST_EVENTS_INIT" || {
+  echo "ERROR: CleaningProgressEvent marker not found in events/__init__.py"
+  exit 1
+}
+
+grep -q "CleaningProgressEvent" "$DEST_STATS" || {
+  echo "ERROR: CleaningProgressEvent marker not found in stats.py"
+  exit 1
+}
+
+grep -q "RoomCleaningStatus" "$DEST_STATS" || {
+  echo "ERROR: RoomCleaningStatus marker not found in stats.py"
+  exit 1
+}
+
 grep -q '"rooms": event.content' "$DEST_HA_EVENT" || {
   echo "ERROR: Last Job room attribute marker not found in HA ecovacs/event.py"
   exit 1
@@ -435,6 +538,26 @@ grep -q '"rooms": event.content' "$DEST_HA_EVENT" || {
 
 grep -q '"duration": event.time' "$DEST_HA_EVENT" || {
   echo "ERROR: Last Job duration attribute marker not found in HA ecovacs/event.py"
+  exit 1
+}
+
+grep -q '_ATTR_SELECTED_ROOMS = "selected_rooms"' "$DEST_HA_VACUUM" || {
+  echo "ERROR: selected_rooms marker not found in HA ecovacs/vacuum.py"
+  exit 1
+}
+
+grep -q '_ATTR_ROOM_PROGRESS = "room_progress"' "$DEST_HA_VACUUM" || {
+  echo "ERROR: room_progress marker not found in HA ecovacs/vacuum.py"
+  exit 1
+}
+
+grep -q '_ATTR_CURRENT_ROOM = "current_room"' "$DEST_HA_VACUUM" || {
+  echo "ERROR: current_room marker not found in HA ecovacs/vacuum.py"
+  exit 1
+}
+
+grep -q '_ATTR_COMPLETED_ROOMS = "completed_rooms"' "$DEST_HA_VACUUM" || {
+  echo "ERROR: completed_rooms marker not found in HA ecovacs/vacuum.py"
   exit 1
 }
 
@@ -456,9 +579,12 @@ echo "  commands/json/clean.py"
 echo "  messages/json/station_state.py"
 echo "  messages/json/stats.py"
 echo "  messages/json/__init__.py"
+echo "  capabilities.py"
+echo "  events/__init__.py"
 echo
 echo "Home Assistant:"
 echo "  components/ecovacs/event.py"
+echo "  components/ecovacs/vacuum.py"
 echo
 
 echo "Restart Home Assistant Core to load the new code."
