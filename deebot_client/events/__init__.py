@@ -38,6 +38,7 @@ __all__ = [
     "AutoEmptyEvent",
     "BatteryEvent",
     "CachedMapInfoEvent",
+    "CleaningProgressEvent",
     "CleanJobStatus",
     "CleanLogEntry",
     "EfficiencyMode",
@@ -57,7 +58,10 @@ __all__ = [
     "MinorMapEvent",
     "NetworkInfoEvent",
     "Position",
+    "RoomCleaningStatus",
+    "RoomProgress",
     "PositionsEvent",
+    "SelectedRoomsEvent",
     "StationEvent",
     "SweepModeEvent",
     "WorkMode",
@@ -74,6 +78,30 @@ class BatteryEvent(Event):
     """Battery event representation."""
 
     value: int
+
+
+@unique
+class RoomCleaningStatus(IntEnum):
+    """Status of a room in the current cleaning job."""
+
+    PENDING = 1
+    CLEANING = 2
+    FINISHED = 3
+
+
+@dataclass(frozen=True)
+class RoomProgress:
+    """Cleaning progress for a room."""
+
+    room_id: int
+    status: RoomCleaningStatus
+
+
+@dataclass(frozen=True)
+class CleaningProgressEvent(Event):
+    """Per-room cleaning progress event representation."""
+
+    rooms: tuple[RoomProgress, ...]
 
 
 @unique
@@ -225,6 +253,13 @@ class OtaEvent(Event):
     version: str | None = None
     status: str | None = None
     progress: int | None = None
+
+
+@dataclass(frozen=True)
+class SelectedRoomsEvent(Event):
+    """Selected cleaning rooms event representation."""
+
+    rooms: tuple[int, ...]
 
 
 @dataclass(frozen=True)

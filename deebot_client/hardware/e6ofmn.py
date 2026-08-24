@@ -83,6 +83,7 @@ from deebot_client.events import (
     CachedMapInfoEvent,
     CarpetAutoFanBoostEvent,
     CleanCountEvent,
+    CleaningProgressEvent,
     CleanLogEvent,
     CleanPreferenceEvent,
     ContinuousCleaningEvent,
@@ -100,6 +101,7 @@ from deebot_client.events import (
     PositionsEvent,
     ReportStatsEvent,
     RoomsEvent,
+    SelectedRoomsEvent,
     StateEvent,
     StationEvent,
     StatsEvent,
@@ -135,6 +137,10 @@ def get_device_info() -> StaticDeviceInfo:
                     SetContinuousCleaning,
                 ),
                 count=CapabilitySet(CleanCountEvent, [GetCleanCount()], SetCleanCount),
+                progress=CapabilityEvent(CleaningProgressEvent, []),
+                selected_rooms=CapabilityEvent(
+                    SelectedRoomsEvent, [GetCleanInfoV2()]
+                ),
                 log=CapabilityEvent(CleanLogEvent, [GetCleanLogs()]),
                 preference=CapabilitySetEnable(
                     CleanPreferenceEvent, [GetCleanPreference()], SetCleanPreference

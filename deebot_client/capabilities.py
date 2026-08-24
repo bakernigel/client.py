@@ -18,6 +18,7 @@ from deebot_client.events import (
     CarpetAutoFanBoostEvent,
     ChildLockEvent,
     CleanCountEvent,
+    CleaningProgressEvent,
     CleanLogEvent,
     CleanPreferenceEvent,
     ContinuousCleaningEvent,
@@ -42,6 +43,7 @@ from deebot_client.events import (
     ReportStatsEvent,
     RoomsEvent,
     SafeProtectEvent,
+    SelectedRoomsEvent,
     StateEvent,
     StationEvent,
     StatsEvent,
@@ -151,6 +153,8 @@ class CapabilityClean:
     action: CapabilityCleanAction
     continuous: CapabilitySetEnable[ContinuousCleaningEvent] | None = None
     count: CapabilitySet[CleanCountEvent, [int]] | None = None
+    progress: CapabilityEvent[CleaningProgressEvent] | None = None
+    selected_rooms: CapabilityEvent[SelectedRoomsEvent] | None = None
     log: CapabilityEvent[CleanLogEvent] | None = None
     preference: CapabilitySetEnable[CleanPreferenceEvent] | None = None
     work_mode: CapabilitySetTypes[WorkModeEvent, [WorkMode | str], WorkMode] | None = (

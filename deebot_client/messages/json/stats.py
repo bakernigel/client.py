@@ -6,9 +6,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from deebot_client.events import (
+    CleaningProgressEvent,
     CleanJobStatus,
     Event,
     ReportStatsEvent,
+    RoomCleaningStatus,
+    RoomProgress,
     StatsEvent,
 )
 from deebot_client.message import HandlingResult, MessageBodyDataDict
@@ -69,6 +72,37 @@ class OnCleanDataUpdateV2(MessageBodyDataDict):
         content = data.get("content", [])
 
         if content:
+            room_progress: list[RoomProgress] = []
+
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+
+                room_id = item.get("id")
+                status = item.get("status")
+
+                if not isinstance(room_id, int) or not isinstance(status, int):
+                    continue
+
+                try:
+                    room_status = RoomCleaningStatus(status)
+                except ValueError:
+                    continue
+
+                room_progress.append(
+                    RoomProgress(
+                        room_id=room_id,
+                        status=room_status,
+                    )
+                )
+
+            if room_progress:
+                event_bus.notify(
+                    CleaningProgressEvent(
+                        rooms=tuple(room_progress),
+                    )
+                )
+
             finished = all(
                 isinstance(item, dict) and item.get("status") == 3
                 for item in content
