@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from deebot_client.events import StateEvent, StationEvent
+from deebot_client.events import SelectedRoomsEvent, StateEvent, StationEvent
 from deebot_client.events.station import State as StationState
 from deebot_client.logging_filter import get_logger
 from deebot_client.message import HandlingResult, MessageBodyDataDict
@@ -17,6 +17,39 @@ if TYPE_CHECKING:
     from deebot_client.event_bus import EventBus
 
 _LOGGER = get_logger(__name__)
+
+
+def _handle_selected_rooms(
+    event_bus: EventBus, state: str | None, clean_state: dict[str, Any]
+) -> None:
+    """Handle the selected rooms for the current cleaning job."""
+    if state != "clean":
+        event_bus.notify(SelectedRoomsEvent(()))
+        return
+
+    content = clean_state.get("content", {})
+    if (
+        not isinstance(content, dict)
+        or content.get("type") != CleanMode.FREE_CLEAN.value
+    ):
+        return
+
+    value = content.get("value")
+    if not isinstance(value, str) or not value:
+        return
+
+    rooms: list[int] = []
+    for item in value.split(";"):
+        parts = item.split(",")
+        if len(parts) != 2:
+            continue
+        try:
+            rooms.append(int(parts[1]))
+        except ValueError:
+            continue
+
+    if rooms:
+        event_bus.notify(SelectedRoomsEvent(tuple(rooms)))
 
 
 class Clean(ExecuteCommand):
@@ -129,6 +162,11 @@ class GetCleanInfo(JsonCommandWithMessageHandling, MessageBodyDataDict):
         """
         status: State | None = None
         state = data.get("state")
+        clean_state = data.get("cleanState", {})
+        if not isinstance(clean_state, dict):
+            clean_state = {}
+
+        _handle_selected_rooms(event_bus, state, clean_state)
 
         if state == "washing":
             event_bus.notify(StationEvent(StationState.WASHING_MOP))
@@ -143,7 +181,6 @@ class GetCleanInfo(JsonCommandWithMessageHandling, MessageBodyDataDict):
         if data.get("trigger") == "alert":
             status = State.ERROR
         elif state in ("clean", "washing"):
-            clean_state = data.get("cleanState", {})
             motion_state = clean_state.get("motionState")
             if motion_state == "working":
                 status = State.CLEANING
