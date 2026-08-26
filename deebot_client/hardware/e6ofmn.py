@@ -175,6 +175,7 @@ def get_device_info() -> StaticDeviceInfo:
             life_span=CapabilityLifeSpan(
                 types=(
                     LifeSpan.BRUSH,
+                    LifeSpan.DUST_BAG,
                     LifeSpan.FILTER,
                     LifeSpan.SIDE_BRUSH,
                     LifeSpan.UNIT_CARE,
@@ -185,6 +186,7 @@ def get_device_info() -> StaticDeviceInfo:
                     GetLifeSpan(
                         [
                             LifeSpan.BRUSH,
+                            LifeSpan.DUST_BAG,
                             LifeSpan.FILTER,
                             LifeSpan.SIDE_BRUSH,
                             LifeSpan.UNIT_CARE,
